@@ -18,8 +18,8 @@ FILE="$IMG_DIR/$FILENAME"
 
 install_dependencies() (
     echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5"; Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > /etc/apt/apt.conf.d/qcow
-    apt-get update
-    apt-get install -y file fdisk libdigest-sha-perl qemu-utils
+    apt-get -qq update
+    apt-get -qq install -y file fdisk libdigest-sha-perl qemu-utils
 )
 
 convert_file() (
@@ -58,15 +58,15 @@ install_packages() (
     echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5";' > $CHROOT_DIR/etc/apt/apt.conf.d/minimal
 
     # prepare packages
-    chroot_exec apt-get update
+    chroot_exec apt-get -qq update
 
     # packages common to all runtimes, to prevent from final purging
-    chroot_exec apt-get install -y sshfs gnupg dnsmasq
+    chroot_exec apt-get -qq install -y sshfs gnupg dnsmasq
 
     # none
     if [ "$RUNTIME" == "none" ]; then
         (
-            chroot_exec apt-get install -y htop dnsutils net-tools telnet
+            chroot_exec apt-get -qq install -y htop dnsutils net-tools telnet
         )
     fi
 
@@ -106,18 +106,18 @@ Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/zabbly.asc
 
 EOF'
-            chroot_exec apt-get update
-            chroot_exec apt-get install -y htop dnsutils net-tools telnet
-            chroot_exec apt-get install -y incus incus-base incus-client incus-extra incus-ui-canonical zfsutils-linux btrfs-progs lvm2 thin-provisioning-tools
+            chroot_exec apt-get -qq update
+            chroot_exec apt-get -qq install -y htop dnsutils net-tools telnet
+            chroot_exec apt-get -qq install -y incus incus-base incus-client incus-extra incus-ui-canonical zfsutils-linux btrfs-progs lvm2 thin-provisioning-tools
             chroot_exec apt-mark hold incus incus-base incus-client incus-extra incus-ui-canonical zfsutils-linux btrfs-progs lvm2 thin-provisioning-tools
         )
     fi
 
-    chroot_exec apt-get purge -y console-setup-linux dbus-user-session liblocale-gettext-perl parted pciutils pollinate python3-gi snapd ssh-import-id
-    chroot_exec apt-get purge -y unattended-upgrades systemd-resolved
+    chroot_exec apt-get -qq purge -y console-setup-linux dbus-user-session liblocale-gettext-perl parted pciutils pollinate python3-gi snapd ssh-import-id
+    chroot_exec apt-get -qq purge -y unattended-upgrades systemd-resolved
 
-    chroot_exec apt-get autoremove -y
-    chroot_exec apt-get clean -y
+    chroot_exec apt-get -qq autoremove -y
+    chroot_exec apt-get -qq clean -y
     chroot_exec sh -c "rm -rf /var/lib/apt/lists/* /var/cache/apt/*"
 
     # binfmt
