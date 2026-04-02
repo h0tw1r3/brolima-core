@@ -6,9 +6,9 @@ set -eux
 export DEBIAN_FRONTEND=noninteractive
 
 # external variables that must be set
-echo vars: $ARCH $BINFMT_ARCH $UBUNTU_VERSION $DOCKER_VERSION $RUNTIME
+echo vars: $ARCH $BINFMT_ARCH $DEBIAN_VERSION $DOCKER_VERSION $RUNTIME
 
-FILENAME="ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-${ARCH}"
+FILENAME="debian-${DEBIAN_VERSION}-genericcloud-${ARCH}-daily"
 
 SCRIPT_DIR=$(realpath "$(dirname "$(dirname $0)")")
 IMG_DIR="$SCRIPT_DIR/dist/img"
@@ -22,7 +22,7 @@ install_dependencies() (
 )
 
 convert_file() (
-    qemu-img convert -p -f qcow2 -O raw $FILE.img $FILE.raw
+    qemu-img convert -p -f qcow2 -O raw $FILE.qcow2 $FILE.raw
 )
 
 extract_partition_offset() (
@@ -45,7 +45,7 @@ chroot_exec() (
 install_packages() (
     # necessary
     chroot_exec mount -t proc proc /proc
-    chroot_exec mount -t devpts devpts /dev/pts
+    mount --bind /dev $CHROOT_DIR/dev
 
     # internet
     chroot_exec mv /etc/resolv.conf /etc/resolv.conf.bak
@@ -55,13 +55,12 @@ install_packages() (
     chroot_exec apt-get update
 
     # packages common to all runtimes, to prevent from final purging
-    chroot_exec apt-get install -y iptables socat sshfs cloud-init lsb-release python3-apt gnupg curl wget dnsmasq
+    chroot_exec apt-get install -y sshfs gnupg dnsmasq
 
     # none
     if [ "$RUNTIME" == "none" ]; then
         (
-            chroot_exec apt-get install -y htop inetutils-ping dnsutils net-tools netcat-openbsd telnet vim-tiny nano
-            chroot_exec apt-get purge -y dmsetup xz-utils
+            chroot_exec apt-get install -y htop dnsutils net-tools telnet
         )
     fi
 
@@ -72,7 +71,6 @@ install_packages() (
             chroot_exec sh /tmp/get-docker.sh --version $DOCKER_VERSION
             chroot_exec rm /tmp/get-docker.sh
             chroot_exec apt-mark hold docker-ce docker-ce-cli containerd.io
-            chroot_exec apt-get purge -y dmsetup xz-utils
         )
     fi
 
@@ -83,7 +81,6 @@ install_packages() (
             tar Cxfz ${CHROOT_DIR}/usr/local /build/dist/containerd/containerd-utils-${ARCH}.tar.gz
             chroot_exec mkdir -p /opt/cni
             chroot_exec mv /usr/local/libexec/cni /opt/cni/bin
-            chroot_exec apt-get purge -y dmsetup xz-utils
         )
     fi
 
@@ -103,14 +100,14 @@ Signed-By: /etc/apt/keyrings/zabbly.asc
 
 EOF'
             chroot_exec apt-get update
-            chroot_exec apt-get install -y htop inetutils-ping dnsutils net-tools netcat-openbsd telnet vim-tiny nano
+            chroot_exec apt-get install -y htop dnsutils net-tools telnet
             chroot_exec apt-get install -y incus incus-base incus-client incus-extra incus-ui-canonical zfsutils-linux btrfs-progs lvm2 thin-provisioning-tools
             chroot_exec apt-mark hold incus incus-base incus-client incus-extra incus-ui-canonical zfsutils-linux btrfs-progs lvm2 thin-provisioning-tools
         )
     fi
 
-    chroot_exec apt-get purge -y apport console-setup-linux dbus-user-session liblocale-gettext-perl lxd-agent-loader lxd-installer parted pciutils pollinate python3-gi snapd ssh-import-id
-    chroot_exec apt-get purge -y ubuntu-advantage-tools ubuntu-cloud-minimal ubuntu-drivers-common ubuntu-release-upgrader-core unattended-upgrades systemd-resolved
+    chroot_exec apt-get purge -y console-setup-linux dbus-user-session liblocale-gettext-perl parted pciutils pollinate python3-gi snapd ssh-import-id
+    chroot_exec apt-get purge -y unattended-upgrades systemd-resolved
 
     chroot_exec apt-get autoremove -y
     chroot_exec apt-get clean -y
@@ -133,12 +130,13 @@ EOF
     # clean traces
     chroot_exec rm /etc/resolv.conf
     chroot_exec mv /etc/resolv.conf.bak /etc/resolv.conf
-    chroot_exec umount /dev/pts
     chroot_exec umount /proc
 
     # fill partition with zeros, to recover space during compression
     chroot_exec dd if=/dev/zero of=/root/zero || echo done
     chroot_exec rm -f /root/zero
+
+    umount $CHROOT_DIR/dev
 )
 
 compress_file() (

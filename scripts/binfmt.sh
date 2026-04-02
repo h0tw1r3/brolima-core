@@ -17,7 +17,7 @@ download_binfmt() (
     # download archive
     FILE="binfmt_linux-${1}.tar.gz"
     URL="https://github.com/tonistiigi/binfmt/releases/download/${BINFMT_VERSION}/${FILE}"
-    curl -LO $URL
+    curl -LO -C - $URL
 
     # extract
     tar xvfz $FILE
@@ -27,7 +27,7 @@ download_qemu() (
     # download archive
     FILE="qemu_v${BINFMT_QEMU_VERSION}_linux-${1}.tar.gz"
     URL="https://github.com/tonistiigi/binfmt/releases/download/${BINFMT_VERSION}/${FILE}"
-    curl -LO $URL
+    curl -LO -C - $URL
 
     # extract
     tar xvfz $FILE

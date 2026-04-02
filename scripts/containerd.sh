@@ -18,7 +18,7 @@ download_containerd() (
     # download archive
     FILE="nerdctl-full-${NERDCTL_VERSION}-linux-${1}.tar.gz"
     URL="https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/${FILE}"
-    curl -LO $URL
+    curl -LO -C - $URL
 
     # validate
     curl -sL "https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/SHA256SUMS" | grep "${FILE}" | shasum -a 256 --check --status
@@ -31,7 +31,7 @@ download_flannel() (
     # download archive
     FILE="cni-plugin-flannel-linux-${1}-v${FLANNEL_MINI_VERSION}.tgz"
     URL="https://github.com/flannel-io/cni-plugin/releases/download/v${FLANNEL_VERSION}/${FILE}"
-    curl -LO $URL
+    curl -LO -C - $URL
 
     # validate
     curl -sL "${URL}.sha512" | shasum -a 512 --check --status

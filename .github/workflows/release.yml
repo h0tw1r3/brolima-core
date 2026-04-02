@@ -10,8 +10,8 @@ on:
 permissions: write-all
 
 env:
-  UBUNTU_CODENAME: noble
-  UBUNTU_VERSION: "24.04"
+  DEBIAN_CODENAME: trixie
+  DEBIAN_VERSION: "13"
   DOCKER_VERSION: "29.2.1"
   NERDCTL_VERSION: "2.2.1"
   FLANNEL_VERSION: "1.9.0-flannel1"
@@ -31,22 +31,22 @@ jobs:
 
       - name: Build for x86_64 (none)
         run: |
-          make qcow OS_ARCH=x86_64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=none
+          make qcow OS_ARCH=x86_64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=none
           ls -lah dist/img
 
       - name: Build for x86_64 (docker)
         run: |
-          make qcow OS_ARCH=x86_64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=docker
+          make qcow OS_ARCH=x86_64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=docker
           ls -lah dist/img
 
       - name: Build for x86_64 (containerd)
         run: |
-          make qcow OS_ARCH=x86_64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=containerd
+          make qcow OS_ARCH=x86_64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=containerd
           ls -lah dist/img
 
       - name: Build for x86_64 (incus)
         run: |
-          make qcow OS_ARCH=x86_64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=incus
+          make qcow OS_ARCH=x86_64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=incus
           ls -lah dist/img
 
       - name: Upload x86_64 artifacts
@@ -66,22 +66,22 @@ jobs:
 
       - name: Build for aarch64 (none)
         run: |
-          make qcow OS_ARCH=aarch64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=none
+          make qcow OS_ARCH=aarch64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=none
           ls -lah dist/img
 
       - name: Build for aarch64 (docker)
         run: |
-          make qcow OS_ARCH=aarch64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=docker
+          make qcow OS_ARCH=aarch64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=docker
           ls -lah dist/img
 
       - name: Build for aarch64 (containerd)
         run: |
-          make qcow OS_ARCH=aarch64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=containerd
+          make qcow OS_ARCH=aarch64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=containerd
           ls -lah dist/img
 
       - name: Build for aarch64 (incus)
         run: |
-          make qcow OS_ARCH=aarch64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=incus
+          make qcow OS_ARCH=aarch64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=incus
           ls -lah dist/img
 
       - name: Upload aarch64 artifacts
@@ -117,12 +117,12 @@ jobs:
           tag="${GITHUB_REF##*/}"
 
           gh release create "${tag}" --draft --title "${tag}"
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-none.qcow2 dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-none.qcow2.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-none.qcow2 dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-none.qcow2.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-docker.qcow2 dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-docker.qcow2.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-docker.qcow2 dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-docker.qcow2.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-containerd.qcow2 dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-containerd.qcow2.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-containerd.qcow2 dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-containerd.qcow2.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-incus.qcow2 dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-incus.qcow2.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-incus.qcow2 dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-incus.qcow2.sha512sum
+          dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-none.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-none.qcow2.sha512sum
+          dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-none.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-none.qcow2.sha512sum
+          dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-docker.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-docker.qcow2.sha512sum
+          dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-docker.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-docker.qcow2.sha512sum
+          dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-containerd.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-containerd.qcow2.sha512sum
+          dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-containerd.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-containerd.qcow2.sha512sum
+          dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-incus.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-incus.qcow2.sha512sum
+          dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-incus.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-incus.qcow2.sha512sum
 
