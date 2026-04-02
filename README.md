@@ -1,6 +1,6 @@
-# colima-core
+# brolima-core
 
-Dependencies for Colima
+Dependencies for [Brolima](https://github.com/h0tw1r3/brolima)
 
 ## Generating image
 
