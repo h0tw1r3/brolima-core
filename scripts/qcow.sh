@@ -55,20 +55,28 @@ install_packages() (
     echo 'nameserver 1.1.1.1' >$CHROOT_DIR/etc/resolv.conf
 
     # minimal
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "0";' > /etc/apt/apt.conf.d/01_nocache
     echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5";' > $CHROOT_DIR/etc/apt/apt.conf.d/minimal
+    chroot_exec apt-get -qq purge -y groff-base man-db manpages
+    chroot_exec apt-get -qq autoremove -y
+    cat >$CHROOT_DIR/etc/dpkg/dpkg.cfg.d/01_nodoc <<"EOF"
+path-exclude=/usr/share/locale/*;
+path-exclude=/usr/share/man/*;
+path-exclude=/usr/share/doc/*;
+path-include=/usr/share/doc/*/copyright;
+EOF
+    pushd $CHROOT_DIR
+    rm -rf usr/share/doc/*
+    rm -rf usr/share/man/*
+    rm -rf usr/share/locale/*
+    popd
 
     # prepare packages
     chroot_exec apt-get -qq update
 
     # packages common to all runtimes, to prevent from final purging
     chroot_exec apt-get -qq install -y sshfs gnupg dnsmasq
-
-    # none
-    if [ "$RUNTIME" == "none" ]; then
-        (
-            chroot_exec apt-get -qq install -y htop dnsutils net-tools telnet
-        )
-    fi
+    chroot_exec apt-get -qq install -y htop dnsutils net-tools telnet
 
     # docker
     if [ "$RUNTIME" == "docker" ]; then
@@ -107,7 +115,6 @@ Signed-By: /etc/apt/keyrings/zabbly.asc
 
 EOF'
             chroot_exec apt-get -qq update
-            chroot_exec apt-get -qq install -y htop dnsutils net-tools telnet
             chroot_exec apt-get -qq install -y incus incus-base incus-client incus-extra incus-ui-canonical zfsutils-linux btrfs-progs lvm2 thin-provisioning-tools
             chroot_exec apt-mark hold incus incus-base incus-client incus-extra incus-ui-canonical zfsutils-linux btrfs-progs lvm2 thin-provisioning-tools
         )
@@ -115,6 +122,12 @@ EOF'
 
     chroot_exec apt-get -qq purge -y console-setup-linux dbus-user-session liblocale-gettext-perl parted pciutils pollinate python3-gi snapd ssh-import-id
     chroot_exec apt-get -qq purge -y unattended-upgrades systemd-resolved
+    chroot_exec apt-get -qq purge -y apt-listchanges apt-utils
+    chroot_exec apt-get -qq purge -y bash-completion
+    chroot_exec apt-get -qq purge -y nano
+    chroot_exec apt-get -qq purge -y reportbug screen
+    chroot_exec apt-get -qq purge -y whiptail
+    chroot_exec apt-get -qq purge -y xml-core
 
     chroot_exec apt-get -qq autoremove -y
     chroot_exec apt-get -qq clean -y
