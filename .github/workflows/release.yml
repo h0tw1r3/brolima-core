@@ -7,7 +7,9 @@ on:
       - "test-v*"
   pull_request:
 
-permissions: write-all
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   DEBIAN_CODENAME: trixie
@@ -20,109 +22,73 @@ env:
   BINFMT_QEMU_VERSION: "7.0.0"
 
 jobs:
-  release-x86_64:
-    runs-on: ubuntu-latest
+  release:
+    strategy:
+      max-parallel: 2
+      fail-fast: true
+      matrix:
+        arch: [x86_64, aarch64]
+        runtime: [none, docker, containerd, incus]
+        include:
+          - arch: x86_64
+            os: ubuntu-latest
+          - arch: aarch64
+            os: ubuntu-24.04-arm
+    runs-on: ${{ matrix.os }}
+    name: release-${{ matrix.runtime }}-${{ matrix.arch }}
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Build for x86_64 (none)
+      - name: Build
         run: |
-          make qcow OS_ARCH=x86_64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=none
+          make qcow OS_ARCH=${{ matrix.arch }} \
+            DEBIAN_CODENAME="${DEBIAN_CODENAME}" \
+            DEBIAN_VERSION="${DEBIAN_VERSION}" \
+            DOCKER_VERSION="${DOCKER_VERSION}" \
+            BINFMT_VERSION="${BINFMT_VERSION}" \
+            BINFMT_QEMU_VERSION="${BINFMT_QEMU_VERSION}" \
+            RUNTIME=${{ matrix.runtime }}
           ls -lah dist/img
 
-      - name: Build for x86_64 (docker)
-        run: |
-          make qcow OS_ARCH=x86_64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=docker
-          ls -lah dist/img
-
-      - name: Build for x86_64 (containerd)
-        run: |
-          make qcow OS_ARCH=x86_64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=containerd
-          ls -lah dist/img
-
-      - name: Build for x86_64 (incus)
-        run: |
-          make qcow OS_ARCH=x86_64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=incus
-          ls -lah dist/img
-
-      - name: Upload x86_64 artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: x86_64-imgs
-          path: dist/img/*amd64*
-
-  release-aarch64:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Build for aarch64 (none)
-        run: |
-          make qcow OS_ARCH=aarch64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=none
-          ls -lah dist/img
-
-      - name: Build for aarch64 (docker)
-        run: |
-          make qcow OS_ARCH=aarch64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=docker
-          ls -lah dist/img
-
-      - name: Build for aarch64 (containerd)
-        run: |
-          make qcow OS_ARCH=aarch64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=containerd
-          ls -lah dist/img
-
-      - name: Build for aarch64 (incus)
-        run: |
-          make qcow OS_ARCH=aarch64 DEBIAN_CODENAME=${DEBIAN_CODENAME} DEBIAN_VERSION=${DEBIAN_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=incus
-          ls -lah dist/img
-
-      - name: Upload aarch64 artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: aarch64-imgs
-          path: dist/img/*arm64*
+          name: img-${{ matrix.arch }}-${{ matrix.runtime }}
+          path: dist/img/*-${{ matrix.runtime }}.*
+          overwrite: true
+          retention-days: 1
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [release-x86_64, release-aarch64]
+    needs: [release]
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: write
+      actions: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           persist-credentials: false
 
       - uses: actions/download-artifact@v4
         with:
-          name: x86_64-imgs
-          path: dist/img
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: aarch64-imgs
           path: dist/img
 
       - name: Create release
         run: >
           tag="${GITHUB_REF##*/}"
 
-          gh release create "${tag}" --draft --title "${tag}"
-          dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-none.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-none.qcow2.sha512sum
-          dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-none.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-none.qcow2.sha512sum
-          dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-docker.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-docker.qcow2.sha512sum
-          dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-docker.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-docker.qcow2.sha512sum
-          dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-containerd.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-containerd.qcow2.sha512sum
-          dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-containerd.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-containerd.qcow2.sha512sum
-          dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-incus.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-amd64-daily-incus.qcow2.sha512sum
-          dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-incus.qcow2 dist/img/debian-${DEBIAN_VERSION}-genericcloud-arm64-daily-incus.qcow2.sha512sum
+          gh release create "${tag}" --draft --title "${tag}" dist/img/*/*.qcow2 dist/img/*/*.sha512sum
 
+      - name: Purge workflow artifacts
+        if: always()
+        run: |
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --jq '.artifacts[].id' | xargs -r -I {} gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/{}
