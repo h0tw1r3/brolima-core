@@ -17,7 +17,7 @@ CHROOT_DIR=/mnt/colima-img
 FILE="$IMG_DIR/$FILENAME"
 
 install_dependencies() (
-    echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5"; Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > /etc/apt/apt.conf.d/minimal
+    echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5"; Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > /etc/apt/apt.conf.d/qcow
     apt-get update
     apt-get install -y file fdisk libdigest-sha-perl qemu-utils
 )
@@ -33,10 +33,11 @@ extract_partition_offset() (
 mount_partition() (
     mkdir -p $CHROOT_DIR
     mount -o loop,offset=$(($1 * 512)) $FILE.raw $CHROOT_DIR
-    echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5"; Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > $CHROOT_DIR/etc/apt/apt.conf.d/minimal
+    echo 'Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > $CHROOT_DIR/etc/apt/apt.conf.d/qcow
 )
 
 unmount_partition() (
+    rm $CHROOT_DIR/etc/apt/apt.conf.d/qcow
     umount $CHROOT_DIR
 )
 
@@ -52,6 +53,9 @@ install_packages() (
     # internet
     chroot_exec mv /etc/resolv.conf /etc/resolv.conf.bak
     echo 'nameserver 1.1.1.1' >$CHROOT_DIR/etc/resolv.conf
+
+    # minimal
+    echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5";' > $CHROOT_DIR/etc/apt/apt.conf.d/minimal
 
     # prepare packages
     chroot_exec apt-get update
