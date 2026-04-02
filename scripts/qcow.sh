@@ -17,6 +17,7 @@ CHROOT_DIR=/mnt/colima-img
 FILE="$IMG_DIR/$FILENAME"
 
 install_dependencies() (
+    echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5"; Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > /etc/apt/apt.conf.d/minimal
     apt-get update
     apt-get install -y file fdisk libdigest-sha-perl qemu-utils
 )
@@ -32,6 +33,7 @@ extract_partition_offset() (
 mount_partition() (
     mkdir -p $CHROOT_DIR
     mount -o loop,offset=$(($1 * 512)) $FILE.raw $CHROOT_DIR
+    echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5"; Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > $CHROOT_DIR/etc/apt/apt.conf.d/minimal
 )
 
 unmount_partition() (
