@@ -178,13 +178,21 @@ vsock
 virtio_vsock
 EOF
 
+    # for logging in from console (debug with QEMU)
+    chroot_exec passwd -d root
+    sed -i -e 's/#\(Storage\)=.*/\1=volatile/' \
+        -e 's/#\(RuntimeMaxUse\)=.*/100M/' \
+        -e 's/#\(ForwardToConsole\)=.*/\1=yes/' $CHROOT_DIR/etc/systemd/journald.conf
+
     # clean traces
     chroot_exec rm /etc/resolv.conf
     chroot_exec mv /etc/resolv.conf.bak /etc/resolv.conf
+    truncate -s 0 $CHROOT_DIR/etc/machine-id
 
     # fill partition with zeros, to recover space during compression
-    chroot_exec dd if=/dev/zero of=/root/zero || echo done
-    chroot_exec rm -f /root/zero
+    dd if=/dev/zero of=$CHROOT_DIR/root/zero ||:
+    rm -f $CHROOT_DIR/root/zero
+    sync
 )
 
 compress_file() (
