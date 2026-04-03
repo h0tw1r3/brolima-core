@@ -19,26 +19,48 @@ FILE="$IMG_DIR/$FILENAME"
 install_dependencies() (
     echo 'APT::Install-Recommends "0"; APT::Install-Suggests "0"; Acquire::Retries "5"; Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > /etc/apt/apt.conf.d/qcow
     apt-get -qq update
-    apt-get -qq install -y file fdisk libdigest-sha-perl qemu-utils
+    apt-get -qq install -y file libdigest-sha-perl qemu-utils kpartx
 )
 
 convert_file() (
     qemu-img convert -p -f qcow2 -O raw $FILE.qcow2 $FILE.raw
 )
 
-extract_partition_offset() (
-    fdisk -l $FILE.raw | grep "$FILE.raw1 " | awk -F' ' '{print $2}'
-)
+mount_chroot() {
+    LOOP_DEV=$(losetup -Pf --show "$FILE.raw")
 
-mount_partition() (
-    mkdir -p $CHROOT_DIR
-    mount -o loop,offset=$(($1 * 512)) $FILE.raw $CHROOT_DIR
+    kpartx -avs "$LOOP_DEV"
+
+    LOOP_NAME=$(basename "$LOOP_DEV")
+    ROOT_PART="/dev/mapper/${LOOP_NAME}p1"
+
+    ROOT_UUID=$(blkid -s UUID -o value "$ROOT_PART")
+    mkdir -p "/dev/disk/by-uuid"
+    ln -s "/dev/mapper/${LOOP_NAME}p1" "/dev/disk/by-uuid/$ROOT_UUID"
+
+    mkdir -p "$CHROOT_DIR"
+    mount "$ROOT_PART" "$CHROOT_DIR"
+
+    chroot_exec mount -t proc proc /proc
+
+    mount --bind /proc "$CHROOT_DIR/proc"
+    mount --bind /sys "$CHROOT_DIR/sys"
+    mount --bind /dev "$CHROOT_DIR/dev"
+
     echo 'Dpkg::Use-Pty "0"; Dpkg::Progress-Fancy="0";' > $CHROOT_DIR/etc/apt/apt.conf.d/qcow
-)
+}
 
-unmount_partition() (
+unmount_chroot() (
     rm $CHROOT_DIR/etc/apt/apt.conf.d/qcow
-    umount $CHROOT_DIR
+
+    umount -l "$CHROOT_DIR/proc"
+    umount -l "$CHROOT_DIR/sys"
+    umount -l "$CHROOT_DIR/dev"
+
+    umount -l "$CHROOT_DIR"
+
+    kpartx -ds "$LOOP_DEV"
+    losetup -d "$LOOP_DEV"
 )
 
 chroot_exec() (
@@ -47,8 +69,6 @@ chroot_exec() (
 
 install_packages() (
     # necessary
-    chroot_exec mount -t proc proc /proc
-    mount --bind /dev $CHROOT_DIR/dev
 
     # internet
     chroot_exec mv /etc/resolv.conf /etc/resolv.conf.bak
@@ -141,6 +161,17 @@ EOF'
         mv binfmt qemu-i386 qemu-${BINFMT_ARCH} ${CHROOT_DIR}/usr/bin
     )
 
+    # lima compatible boot console
+    echo "virtio_console" >> $CHROOT_DIR/etc/initramfs-tools/modules
+    chroot_exec update-initramfs -k all -u
+    mkdir -p $CHROOT_DIR/etc/default/grub.d
+    cat >"$CHROOT_DIR"/etc/default/grub.d/99-lima-console.cfg <<"EOF"
+GRUB_TERMINAL="console serial"
+GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"
+GRUB_CMDLINE_LINUX="$GRUB_CMDLINE_LINUX console=ttyS0 console=hvc0"
+EOF
+    chroot_exec update-grub
+
     # enable vsock modules at boot
     cat > ${CHROOT_DIR}/etc/modules-load.d/vsock.conf <<EOF
 vsock
@@ -150,13 +181,10 @@ EOF
     # clean traces
     chroot_exec rm /etc/resolv.conf
     chroot_exec mv /etc/resolv.conf.bak /etc/resolv.conf
-    chroot_exec umount /proc
 
     # fill partition with zeros, to recover space during compression
     chroot_exec dd if=/dev/zero of=/root/zero || echo done
     chroot_exec rm -f /root/zero
-
-    umount $CHROOT_DIR/dev
 )
 
 compress_file() (
@@ -171,7 +199,7 @@ compress_file() (
 # perform all actions
 install_dependencies
 convert_file
-mount_partition "$(extract_partition_offset)"
+mount_chroot
 install_packages
-unmount_partition
+unmount_chroot
 compress_file
