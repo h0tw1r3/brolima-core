@@ -11,7 +11,7 @@ RUNTIME ?= docker
 DOCKER_VERSION=29.3.1
 
 # containerd dependency
-NERDCTL_VERSION ?= 2.2.1
+NERDCTL_VERSION ?= 2.2.2
 FLANNEL_VERSION ?= 1.9.0-flannel1
 FLANNEL_MINI_VERSION ?= 1.9.0
 
@@ -37,7 +37,7 @@ endif
 # targets
 #
 
-all: qcow
+all: image
 
 .PHONY: clean
 clean:
@@ -52,5 +52,5 @@ binfmt:
 containerd:
 	ARCH=$(ARCH) NERDCTL_VERSION=$(NERDCTL_VERSION) FLANNEL_VERSION=$(FLANNEL_VERSION) FLANNEL_MINI_VERSION=$(FLANNEL_MINI_VERSION) RUNTIME=$(RUNTIME) scripts/containerd.sh
 
-qcow: cloud-image binfmt containerd
-	ARCH=$(ARCH) BINFMT_ARCH=$(BINFMT_ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) DOCKER_VERSION=$(DOCKER_VERSION) RUNTIME=$(RUNTIME) scripts/qcow.docker.sh
+image: cloud-image binfmt containerd
+	ARCH=$(ARCH) BINFMT_ARCH=$(BINFMT_ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) DOCKER_VERSION=$(DOCKER_VERSION) RUNTIME=$(RUNTIME) scripts/image.docker.sh

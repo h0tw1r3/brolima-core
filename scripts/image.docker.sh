@@ -14,13 +14,13 @@ SCRIPT_DIR=$(realpath "$(dirname "$(dirname $0)")")
 # dependencies in case of cross-arch
 docker run --privileged --rm tonistiigi/binfmt --install $BINFMT_ARCH
 
-# build qcow image
-docker run --rm -t --privileged \
-    --platform linux/$ARCH \
-    --volume $SCRIPT_DIR:/build \
-    --env ARCH \
-    --env BINFMT_ARCH \
-    --env DEBIAN_VERSION \
-    --env DOCKER_VERSION \
-    --env RUNTIME \
-    debian:${DEBIAN_VERSION} /build/scripts/qcow.sh
+# build disk image
+docker run --rm --privileged \
+	--platform linux/$ARCH \
+	--volume $SCRIPT_DIR:/build \
+	--env ARCH \
+	--env BINFMT_ARCH \
+	--env DEBIAN_VERSION \
+	--env DOCKER_VERSION \
+	--env RUNTIME \
+	debian:${DEBIAN_VERSION} /build/scripts/image.debian.sh

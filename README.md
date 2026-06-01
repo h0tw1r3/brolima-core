@@ -4,20 +4,20 @@ Dependencies for [Brolima](https://github.com/h0tw1r3/brolima)
 
 ## Generating image
 
-Generate qcow image for the OS architecture and default runtime (docker).
+Generate a raw disk image compressed with gzip (`.raw.gz`) for the OS architecture and default runtime (docker).
 
 ```sh
-make qcow
+make image
 ```
 
-Generate qcow image for another architecture. `OS_ARCH` must be one of `aarch64`, `x86_64`
+Generate a `.raw.gz` image for another architecture. `OS_ARCH` must be one of `aarch64`, `x86_64`
 
 ```sh
-OS_ARCH=x86_64 make qcow
+OS_ARCH=x86_64 make image
 ```
 
-Generate qcow image for another runtime. `RUNTIME` must be one of `docker`, `containerd`, `incus`, `none`
+Generate a `.raw.gz` image for another runtime. `RUNTIME` must be one of `docker`, `containerd`, `incus`, `none`
 
 ```sh
-RUNTIME=containerd make qcow
+RUNTIME=containerd make image
 ```

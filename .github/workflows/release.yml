@@ -16,7 +16,7 @@ env:
   DEBIAN_CODENAME: trixie
   DEBIAN_VERSION: "13"
   DOCKER_VERSION: "29.3.1"
-  NERDCTL_VERSION: "2.2.1"
+  NERDCTL_VERSION: "2.2.2"
   FLANNEL_VERSION: "1.9.0-flannel1"
   FLANNEL_MINI_VERSION: "1.9.0"
   BINFMT_VERSION: "deploy/v7.0.0-28"
@@ -46,7 +46,7 @@ jobs:
 
       - name: Build
         run: |
-          make qcow OS_ARCH=${{ matrix.arch }} \
+          make image OS_ARCH=${{ matrix.arch }} \
             DEBIAN_CODENAME="${DEBIAN_CODENAME}" \
             DEBIAN_VERSION="${DEBIAN_VERSION}" \
             DOCKER_VERSION="${DOCKER_VERSION}" \
@@ -86,7 +86,7 @@ jobs:
         run: >
           tag="${GITHUB_REF##*/}"
 
-          gh release create "${tag}" --draft --title "${tag}" dist/img/*/*.qcow2 dist/img/*/*.sha512sum
+          gh release create "${tag}" --draft --title "${tag}" dist/img/*/*.raw.gz dist/img/*/*.sha512sum
 
       - name: Purge workflow artifacts
         if: always()
