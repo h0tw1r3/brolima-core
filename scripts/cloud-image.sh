@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# deprecated, implemented in Makefile
+
 set -eux
 
 # external variables that must be set

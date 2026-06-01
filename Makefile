@@ -1,6 +1,9 @@
 # core dependency
 DEBIAN_VERSION ?= 13
 DEBIAN_CODENAME ?= trixie
+DEBIAN_BUILD ?= 20260525-2489
+DEBIAN_IMAGE_BASE_URL ?= https://cloud.debian.org/images/cloud/$(DEBIAN_CODENAME)/$(DEBIAN_BUILD)
+
 BINFMT_VERSION ?= deploy/v7.0.0-28
 BINFMT_QEMU_VERSION ?= 7.0.0
 
@@ -39,12 +42,19 @@ endif
 
 all: image
 
-.PHONY: clean
+.PHONY: clean cloud-image
 clean:
 	rm -rf dist
 
-cloud-image:
-	ARCH=$(ARCH) DEBIAN_VERSION=$(DEBIAN_VERSION) DEBIAN_CODENAME=$(DEBIAN_CODENAME) scripts/cloud-image.sh
+cloud-image: dist/img/debian-$(DEBIAN_VERSION)-genericcloud-$(ARCH)-$(DEBIAN_BUILD).qcow2.sha512sum
+
+dist/img/debian-$(DEBIAN_VERSION)-genericcloud-$(ARCH)-$(DEBIAN_BUILD).qcow2:
+	@mkdir -p dist/img && cd dist/img && curl -L -O -C - $(DEBIAN_IMAGE_BASE_URL)/$(notdir $@)
+
+dist/img/debian-$(DEBIAN_VERSION)-genericcloud-$(ARCH)-$(DEBIAN_BUILD).qcow2.sha512sum: dist/img/debian-$(DEBIAN_VERSION)-genericcloud-$(ARCH)-$(DEBIAN_BUILD).qcow2
+	@shasum -a 512 $< > $@.tmp
+	@cd dist/img && ( curl -sL $(DEBIAN_IMAGE_BASE_URL)/SHA512SUMS | grep "debian-$(DEBIAN_VERSION)-genericcloud-$(ARCH)-$(DEBIAN_BUILD)\.qcow2" | shasum -a 512 --check --status )
+	@mv $@.tmp $@
 
 binfmt:
 	ARCH=$(ARCH) BINFMT_ARCH=$(BINFMT_ARCH) BINFMT_VERSION=$(BINFMT_VERSION) BINFMT_QEMU_VERSION=$(BINFMT_QEMU_VERSION) scripts/binfmt.sh
