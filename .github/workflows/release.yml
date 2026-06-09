@@ -24,109 +24,70 @@ env:
   BINFMT_QEMU_VERSION: "7.0.0"
 
 jobs:
-  release-x86_64:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      max-parallel: 2
+      fail-fast: true
+      matrix:
+        arch: [x86_64, aarch64]
+        runtime: [none, docker, containerd, incus]
+        include:
+          - arch: x86_64
+            os: ubuntu-latest
+          - arch: aarch64
+            os: ubuntu-24.04-arm
+    runs-on: ${{ matrix.os }}
+    name: release-${{ matrix.arch }}-${{ matrix.runtime }}
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Build for x86_64 (none)
+      - name: Build
         run: |
-          make image OS_ARCH=x86_64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=none
+          make image OS_ARCH=${{ matrix.arch }} \
+            UBUNTU_CODENAME="${UBUNTU_CODENAME}" \
+            UBUNTU_VERSION="${UBUNTU_VERSION}" \
+            DOCKER_VERSION="${DOCKER_VERSION}" \
+            BINFMT_VERSION="${BINFMT_VERSION}" \
+            BINFMT_QEMU_VERSION="${BINFMT_QEMU_VERSION}" \
+            RUNTIME=${{ matrix.runtime }}
           ls -lah dist/img
 
-      - name: Build for x86_64 (docker)
-        run: |
-          make image OS_ARCH=x86_64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=docker
-          ls -lah dist/img
-
-      - name: Build for x86_64 (containerd)
-        run: |
-          make image OS_ARCH=x86_64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=containerd
-          ls -lah dist/img
-
-      - name: Build for x86_64 (incus)
-        run: |
-          make image OS_ARCH=x86_64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=incus
-          ls -lah dist/img
-
-      - name: Upload x86_64 artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: x86_64-imgs
-          path: dist/img/*amd64*
+          name: img-${{ matrix.arch }}-${{ matrix.runtime }}
+          path: dist/img/*-${{ matrix.arch }}-${{ matrix.runtime }}.*
+          overwrite: true
+          retention-days: 1
 
-  release-aarch64:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Build for aarch64 (none)
-        run: |
-          make image OS_ARCH=aarch64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=none
-          ls -lah dist/img
-
-      - name: Build for aarch64 (docker)
-        run: |
-          make image OS_ARCH=aarch64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=docker
-          ls -lah dist/img
-
-      - name: Build for aarch64 (containerd)
-        run: |
-          make image OS_ARCH=aarch64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=containerd
-          ls -lah dist/img
-
-      - name: Build for aarch64 (incus)
-        run: |
-          make image OS_ARCH=aarch64 UBUNTU_CODENAME=${UBUNTU_CODENAME} UBUNTU_VERSION=${UBUNTU_VERSION} DOCKER_VERSION=${DOCKER_VERSION} BINFMT_VERSION=${BINFMT_VERSION} BINFMT_QEMU_VERSION=${BINFMT_QEMU_VERSION} RUNTIME=incus
-          ls -lah dist/img
-
-      - name: Upload aarch64 artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: aarch64-imgs
-          path: dist/img/*arm64*
-
-  create-release:
+  release:
     runs-on: ubuntu-latest
-    needs: [release-x86_64, release-aarch64]
+    needs: [build]
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: write
+      actions: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: x86_64-imgs
-          path: dist/img
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: aarch64-imgs
-          path: dist/img
-
-      - name: Create release
+      - name: Create
         run: >
           tag="${GITHUB_REF##*/}"
 
-          gh release create "${tag}" --draft --title "${tag}"
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-none.raw.gz dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-none.raw.gz.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-none.raw.gz dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-none.raw.gz.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-docker.raw.gz dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-docker.raw.gz.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-docker.raw.gz dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-docker.raw.gz.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-containerd.raw.gz dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-containerd.raw.gz.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-containerd.raw.gz dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-containerd.raw.gz.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-incus.raw.gz dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-amd64-incus.raw.gz.sha512sum
-          dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-incus.raw.gz dist/img/ubuntu-${UBUNTU_VERSION}-minimal-cloudimg-arm64-incus.raw.gz.sha512sum
+          gh release create "${tag}" --draft --title "${tag}" dist/img/*/*.raw.gz dist/img/*/*.sha512sum
+
+      - name: Delete build artifacts
+        if: always()
+        run: |
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --jq '.artifacts[].id' | xargs -r -I {} gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/{}
 
